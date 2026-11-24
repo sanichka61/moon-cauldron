@@ -407,7 +407,7 @@ nav.tabs .badge{min-width:18px;height:18px;line-height:18px;padding:0 5px;text-a
 </div>
 <div id="menu"><div class="aur a1"></div><div class="aur a2"></div><div class="aur a3"></div>
 <div class="mbig">🧪</div><div class="mt">Лунный Котёл</div><div class="ms">зельеварня между мирами</div>
-<div class="mb"><button class="btn go" id="menuPlay">▶ Играть</button><button class="btn" id="menuOn">🤝 Играть вдвоём онлайн</button><button class="btn sec" id="menuBook">📖 Книга рецептов</button><button class="btn sec" id="mSnd"></button><button class="btn sec" id="mQ"></button></div></div>
+<div class="mb"><button class="btn go" id="menuPlay">▶ Играть</button><button class="btn" id="menuOn">🤝 Играть вдвоём онлайн</button><button class="btn sec" id="menuBook">📖 Книга рецептов</button><button class="btn sec" id="mSnd"></button><button class="btn sec" id="mQ"></button><button class="btn sec" id="mSkin"></button></div></div>
 <div id="safe" style="position:fixed;left:0;top:0;width:1px;height:1px;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"></div>
 <div id="chat" class="hidden"><div id="cLog"></div><div id="cQ"><button data-q="👋 Привет!">👋</button><button data-q="Помоги!">Помоги!</button><button data-q="Спасибо!">Спасибо!</button><button data-q="Иду домой">Иду домой</button><button data-q="Нужны травы 🌿">Нужны травы</button></div><div id="cRow"><button id="cBtn" aria-label="Чат">💬</button><input id="cMsg" maxlength="120" placeholder="Сообщение…" autocomplete="off"><button id="cSend">➤</button></div></div>
 <div id="toasts"></div>
@@ -534,7 +534,7 @@ const LINES=['Нужно срочно, к вечеру!','Для свадьбы 
 const THANKS=['Спасибо, мастер!','Вот это работа!','Как раз то, что нужно!','Взаимовыгодно!','Приходите ещё!'];
 
 /* ================= state ================= */
-function fresh(){const m={};for(const k in RECIPES)m[k]=1;return{gold:30,lvl:1,xp:0,plants:{},potions:{},weapon:'stick',owned:['stick'],hpUp:0,spUp:0,market:m,prev:{...m},orders:[],nextOrder:0,sfx:true,visited:false,q:'auto',mix:{},known:{},junk:0}}
+function fresh(){const m={};for(const k in RECIPES)m[k]=1;return{gold:30,lvl:1,xp:0,plants:{},potions:{},weapon:'stick',owned:['stick'],hpUp:0,spUp:0,market:m,prev:{...m},orders:[],nextOrder:0,sfx:true,visited:false,q:'auto',mix:{},known:{},junk:0,skin:'m'}}
 const QM=['auto','high','mid','low'],QN={auto:'Авто',high:'Высокая',mid:'Средняя',low:'Низкая'};
 let S;
 try{S=JSON.parse(localStorage.getItem('lunarCauldron')||'null')}catch(e){S=null}
@@ -793,10 +793,10 @@ function ordersHTML(){
   <div class="owant"><img src="${icon('potion',o.id)}"><div>${RECIPES[o.id].n}<div style="font-size:13px;color:${ok?'var(--ok)':'var(--bad)'}">× ${o.qty} (есть ${have})</div></div></div>
   <div class="oprice"><div class="t">${fmt(o.unit*o.qty)} 🪙</div><div style="font-size:12px;color:var(--mut)">${o.unit} за шт.</div>${tag}</div>
   ${o.taken?`<div class="row"><button class="btn ${ok?'go':'dis'}" data-act="accept" data-uid="${o.uid}">Отдать</button><button class="btn sec" data-act="decline" data-uid="${o.uid}">✕</button></div>`:`<div class="row"><button class="btn" data-act="takeord" data-uid="${o.uid}">📜 Взять заказ</button><button class="btn sec" data-act="decline" data-uid="${o.uid}">✕</button></div>`}
-  ${o.taken?`<div class="tbar"><i data-exp="${o.exp}" data-dur="${o.dur}" style="width:${clamp((o.exp-now)/o.dur*100,0,100)}%"></i></div>`:`<div style="width:100%;font-size:12px;color:var(--mut)">⏱ Время пойдёт после «Взять заказ»: ${Math.round(o.dur/6000)/10} мин</div>`}</div>`}).join(''):'<div class="empty">Заказчиков пока нет — скоро кто-нибудь постучится в дверь…</div>';
+  ${o.taken?`<div class="tbar"><i data-exp="${o.exp}" data-dur="${o.dur}" style="width:${clamp((o.exp-now)/o.dur*100,0,100)}%"></i></div>`:`<div style="width:100%;font-size:12px;color:var(--mut)">⏱ Время пойдёт после «Взять заказ»: ${Math.round(o.dur/6000)/10} мин</div>`}</div>`}).join(''):'<div style="text-align:center;padding:22px 0"><button class="btn go" data-act="neworder" style="font-size:20px;padding:16px 34px">📜 Взять заказ</button></div>';
  const po=Object.keys(RECIPES).filter(k=>S.potions[k]>0);
  const stall=po.length?`<div class="grid">${po.map(k=>{const u=Math.round(price(k)*.85);return`<div class="card"><div class="hd"><img src="${icon('potion',k)}"><div><div class="nm">${RECIPES[k].n}</div><div class="pr">${u} 🪙 за шт. · есть ${S.potions[k]}</div></div></div><div class="row" style="margin-top:10px"><button class="btn sec" data-act="sell" data-id="${k}" data-n="1">Продать 1</button><button class="btn sec" data-act="sell" data-id="${k}" data-n="${S.potions[k]}">Все ×${S.potions[k]}</button></div></div>`}).join('')}</div>`:'<div class="empty">Сваренных зелий нет.</div>';
- return`<h2>📜 Заказы</h2><div class="sub">Заказчик приходит по одному: нажми «Взять заказ» — и время пойдёт. Кто-то платит щедрее рынка, кто-то торгуется. Продажа даёт золото и опыт.</div>${list}
+ return`<h2>📜 Заказы</h2><div class="sub">Нажми «Взять заказ» — появится заказчик, и время пойдёт. Выполни заказ и бери следующий. Продажа даёт золото и опыт.</div>${list}
  <div class="sect">🏪 Рыночный прилавок <span style="font-size:13px;color:var(--mut);font-family:Nunito">(−15% к рынку, но сразу)</span></div>${stall}`;
 }
 function sellGain(total){if(COOP.on&&COOP.role==='brew')coopSend({t:'share',g:Math.round(total*.4),x:Math.round(total*.15)});S.gold+=total;gainXp(Math.round(total*.3))}
@@ -848,11 +848,11 @@ function worldsHTML(){
 /* --- events --- */
 $('#panel').addEventListener('click',e=>{
  const b=e.target.closest('[data-act]');if(!b||b.classList.contains('dis'))return;const a=b.dataset.act,id=b.dataset.id;
- if(COOP.on){const bad=COOP.role==='gather'?['cook','add','take','dump','accept','sell','takeord']:['enter'];if(bad.includes(a))return toast(COOP.role==='gather'?'Это работа зельевара 🧪':'Травы добывает добытчик ⚔️','warn')}
+ if(COOP.on){const bad=COOP.role==='gather'?['cook','add','take','dump','accept','sell','neworder']:['enter'];if(bad.includes(a))return toast(COOP.role==='gather'?'Это работа зельевара 🧪':'Травы добывает добытчик ⚔️','warn')}
  if(a==='giveall'){const c={};for(const k in S.plants)if(S.plants[k]>0){c[k]=S.plants[k];S.plants[k]=0}if(!Object.keys(c).length)return toast('Трав нет','warn');coopSend({t:'herbs',c});save();toast('Отправлено: '+herbLine(c),'ok');renderAll();return}
  if(a==='bpage')turn(+b.dataset.n);else if(a==='bgo')goPage(+b.dataset.n);else if(a==='openbook')setTab('book');else if(a==='add')mixAdd(id);else if(a==='take')mixTake(id);else if(a==='dump')mixDump();else if(a==='cook')cook();else if(a==='trash')trashJunk();
  else if(a==='accept'){const i=S.orders.findIndex(o=>o.uid===b.dataset.uid);if(i<0)return;const o=S.orders[i];if(!o.taken)return;if((S.potions[o.id]||0)<o.qty)return toast('Не хватает зелий','warn');S.potions[o.id]-=o.qty;const tot=o.unit*o.qty;S.orders.splice(i,1);S.nextOrder=Date.now()+rint(15,30)*1000;SFX.coin();toast(`${o.cust.e} «${pick(THANKS)}» +${fmt(tot)} 🪙`,'gold');sellGain(tot);save();renderAll()}
- else if(a==='takeord'){const o=S.orders.find(o=>o.uid===b.dataset.uid);if(!o||o.taken)return;o.taken=true;o.exp=Date.now()+o.dur;SFX.pick();toast('📜 Заказ принят — время пошло!','ok');save();renderAll()}
+ else if(a==='neworder'){if(S.orders.length)return;const o=newOrder();o.taken=true;o.exp=Date.now()+o.dur;S.orders.push(o);SFX.pick();toast('📜 Заказ принят — время пошло!','ok');save();renderAll()}
  else if(a==='gift')giftModal();
  else if(a==='sellw'){const W=WEAPONS[id];if(!W||id==='stick'||!S.owned.includes(id))return;if(!confirm('Продать «'+W.n+'»? Цена случайная: либо мало (≈15–35% стоимости), либо много (≈70–110%).'))return;const lucky=Math.random()<.5,g=Math.max(1,Math.round(W.price*(lucky?rnd(.7,1.1):rnd(.15,.35))));S.owned=S.owned.filter(x=>x!==id);if(S.weapon===id)S.weapon='stick';wSel=null;S.gold+=g;SFX.coin();toast(lucky?`🍀 Повезло! Скупщик дал ${fmt(g)} 🪙`:`😕 Скупщик дал только ${fmt(g)} 🪙`,lucky?'gold':'warn');save();renderAll()}
  else if(a==='decline'){S.orders=S.orders.filter(o=>o.uid!==b.dataset.uid);S.nextOrder=Date.now()+rint(15,30)*1000;save();renderAll()}
@@ -877,7 +877,7 @@ let marketT=0;
 setInterval(()=>{
  const now=Date.now();let ch=false;
  const before=S.orders.length;S.orders=S.orders.filter(o=>!o.taken||o.exp>now);if(S.orders.length!==before){ch=true;S.nextOrder=now+rint(15,30)*1000}
- if(S.orders.length<1&&now>=S.nextOrder){S.orders.push(newOrder());ch=true}
+ 
  marketT++;if(marketT>=20){marketT=0;for(const k in S.market){S.prev[k]=S.market[k];S.market[k]=clamp(S.market[k]+rnd(-.1,.1),.75,1.3)}ch=true}
  if(ch){save();if(!$('#home').classList.contains('hidden')&&(tab==='orders'||(tab==='brew'&&marketT===0&&!brewing)))renderPanel();else $('#ordBadge').textContent=S.orders.length}
  else if(tab==='orders')$$('.tbar i').forEach(i=>i.style.width=clamp((+i.dataset.exp-now)/+i.dataset.dur*100,0,100)+'%');
@@ -1102,12 +1102,18 @@ function drawPlayer(x,p,t){
  // back weapon layer if facing away
  const drawW=()=>{x.save();x.translate(hx,hy);x.rotate(ang);drawWeapon(x,wp,.78);x.restore();x.fillStyle='#ffd9b8';x.beginPath();x.arc(hx,hy,4.5,0,7);x.fill()};
  if(f<0)drawW();
- const g=x.createLinearGradient(0,-38,0,2);g.addColorStop(0,'#a98bff');g.addColorStop(1,'#4b2fbf');x.fillStyle=g;x.beginPath();x.moveTo(-15,0);x.quadraticCurveTo(-17,-26,0,-33);x.quadraticCurveTo(17,-26,15,0);x.quadraticCurveTo(0,7,-15,0);x.fill();
- x.fillStyle='#ffd36e';x.fillRect(-13,-14,26,3.5);x.fillStyle='#8a5a2b';rr(x,-f*13-6,-14,12,10,3);x.fill();
+ const F=S.skin==='f',HAIR='#b5532f',sway=Math.sin(t*3)*2+(p.moving?Math.sin(t*12)*2:0);
+ if(F){x.fillStyle=HAIR;x.beginPath();x.moveTo(-11,-46);x.quadraticCurveTo(-19,-24,-13+sway,-4);x.quadraticCurveTo(0,-1,13+sway,-4);x.quadraticCurveTo(19,-24,11,-46);x.closePath();x.fill();x.fillStyle='rgba(255,255,255,.18)';x.beginPath();x.ellipse(-9,-28,2,10,.1,0,7);x.fill()}
+ const g=x.createLinearGradient(0,-38,0,2);
+ if(F){g.addColorStop(0,'#ffb3e0');g.addColorStop(1,'#b03a8a');x.fillStyle=g;x.beginPath();x.moveTo(-22,2);x.quadraticCurveTo(-11,-8,-9,-31);x.quadraticCurveTo(0,-37,9,-31);x.quadraticCurveTo(11,-8,22,2);x.quadraticCurveTo(0,9,-22,2);x.fill();x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=1.2;x.beginPath();x.moveTo(-14,0);x.quadraticCurveTo(-8,-8,-5,-14);x.moveTo(14,0);x.quadraticCurveTo(8,-8,5,-14);x.stroke()}
+ else{g.addColorStop(0,'#a98bff');g.addColorStop(1,'#4b2fbf');x.fillStyle=g;x.beginPath();x.moveTo(-15,0);x.quadraticCurveTo(-17,-26,0,-33);x.quadraticCurveTo(17,-26,15,0);x.quadraticCurveTo(0,7,-15,0);x.fill()}
+ if(F){x.fillStyle='#ffd36e';x.fillRect(-9,-18,18,3.2);x.fillStyle='#ff5fa8';x.beginPath();x.moveTo(f*3,-16.5);x.lineTo(f*3-7,-21);x.lineTo(f*3-7,-12);x.closePath();x.moveTo(f*3,-16.5);x.lineTo(f*3+7,-21);x.lineTo(f*3+7,-12);x.closePath();x.fill();x.fillStyle='#ffd36e';x.beginPath();x.arc(f*3,-16.5,2,0,7);x.fill()}
+ else{x.fillStyle='#ffd36e';x.fillRect(-13,-14,26,3.5);x.fillStyle='#8a5a2b';rr(x,-f*13-6,-14,12,10,3);x.fill()}
  x.fillStyle='#ffd9b8';x.beginPath();x.arc(0,-40,10.5,0,7);x.fill();
  x.fillStyle='#2a1a4a';x.beginPath();x.arc(f*4-3,-40,1.8,0,7);x.arc(f*4+3.5,-40,1.8,0,7);x.fill();x.fillStyle='rgba(255,130,150,.5)';x.beginPath();x.arc(f*4-6,-36,2.4,0,7);x.arc(f*4+6.5,-36,2.4,0,7);x.fill();
- x.fillStyle='#e8e0ff';x.beginPath();x.ellipse(0,-35,9,4,0,0,Math.PI);x.fill();
- const hg=x.createLinearGradient(0,-74,0,-44);hg.addColorStop(0,'#7a5cff');hg.addColorStop(1,'#3b1f9a');x.fillStyle=hg;x.beginPath();x.moveTo(-15,-45);x.quadraticCurveTo(-4,-52,f*8,-76);x.quadraticCurveTo(10,-54,15,-45);x.quadraticCurveTo(0,-41,-15,-45);x.fill();
+ if(!F){x.fillStyle='#e8e0ff';x.beginPath();x.ellipse(0,-35,9,4,0,0,Math.PI);x.fill()}
+ else{x.strokeStyle='#2a1a4a';x.lineWidth=1.2;for(const ex of[f*4-3,f*4+3.5]){x.beginPath();x.moveTo(ex-2,-42);x.lineTo(ex-3.4,-43.8);x.moveTo(ex+2,-42);x.lineTo(ex+3.4,-43.8);x.stroke()}x.fillStyle='#e0607e';x.beginPath();x.ellipse(f*4+.3,-35.5,2.3,1.1,0,0,7);x.fill();x.fillStyle=HAIR;x.beginPath();x.ellipse(-10.5,-37,3,8,.1,0,7);x.ellipse(10.5,-37,3,8,-.1,0,7);x.fill()}
+ const hg=x.createLinearGradient(0,-74,0,-44);if(F){hg.addColorStop(0,'#ff7acb');hg.addColorStop(1,'#8a2a9a')}else{hg.addColorStop(0,'#7a5cff');hg.addColorStop(1,'#3b1f9a')}x.fillStyle=hg;x.beginPath();x.moveTo(-15,-45);x.quadraticCurveTo(-4,-52,f*8,-76);x.quadraticCurveTo(10,-54,15,-45);x.quadraticCurveTo(0,-41,-15,-45);x.fill();
  x.fillStyle='#ffd36e';x.beginPath();x.ellipse(0,-45,17,4,0,0,7);x.fill();x.shadowColor='#ffd36e';x.shadowBlur=8;x.beginPath();for(let i=0;i<10;i++){const r=i%2?1.8:4.5,a=-Math.PI/2+i*Math.PI/5;x.lineTo(f*2+Math.cos(a)*r,-56+Math.sin(a)*r)}x.fill();x.shadowBlur=0;
  if(f>0)drawW();
  x.restore();
@@ -1263,8 +1269,7 @@ function recvGift(m){
 $('#coopBtn').onclick=coopMenu;
 
 /* ================= boot ================= */
-if(!S.nextOrder){S.orders=[newOrder()];S.nextOrder=Date.now()+8000}
-else{S.orders=S.orders.slice(0,1).map(o=>({taken:false,exp:0,dur:rint(110,210)*1000,...o})).filter(o=>!o.taken||o.exp>Date.now())}
+S.orders=S.orders.filter(o=>o.taken&&o.exp>Date.now()).slice(0,1);
 if(S.lvl>1||Object.keys(S.potions).length)tab='brew';
 for(const k in S.potions)S.known[k]=true;
 for(const k in RECIPES){if(!S.market[k])S.market[k]=1;if(!S.prev[k])S.prev[k]=1}
@@ -1290,13 +1295,14 @@ setInterval(()=>{const want=G?gb:document.body;if(chatEl.parentNode!==want)want.
  const now=Date.now();for(const d of cLog.children)d.classList.toggle('old',now-d.dataset.t>9000)},500);
 /* ===== main menu ===== */
 const menuEl=$('#menu');
-function menuLabels(){$('#mSnd').textContent=S.sfx?'🔊 Звук: вкл':'🔇 Звук: выкл';$('#mQ').textContent='🎨 Графика: '+(QN[S.q]||'Авто');$('#menuPlay').textContent=(S.visited||S.lvl>1)?'▶ Продолжить':'▶ Играть'}
+function menuLabels(){$('#mSkin').textContent='👗 Скин: '+(S.skin==='f'?'Женский':'Мужской');$('#mSnd').textContent=S.sfx?'🔊 Звук: вкл':'🔇 Звук: выкл';$('#mQ').textContent='🎨 Графика: '+(QN[S.q]||'Авто');$('#menuPlay').textContent=(S.visited||S.lvl>1)?'▶ Продолжить':'▶ Играть'}
 function showMenu(){menuLabels();menuEl.classList.remove('hidden')}
 $('#menuPlay').onclick=()=>menuEl.classList.add('hidden');
 $('#menuBook').onclick=()=>{menuEl.classList.add('hidden');setTab('book')};
 $('#menuOn').onclick=coopMenu;
 $('#mSnd').onclick=()=>{$('#sndBtn').click();menuLabels()};
 $('#mQ').onclick=()=>{$('#qBtn').click();menuLabels()};
+$('#mSkin').onclick=()=>{S.skin=S.skin==='f'?'m':'f';save();menuLabels();toast(S.skin==='f'?'👗 Женский скин':'🧙 Мужской скин','ok')};
 $('.logo').onclick=showMenu;$('#menuBtn').onclick=showMenu;menuLabels();
 </script>
 </body>
