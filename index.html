@@ -848,7 +848,7 @@ function worldsHTML(){
 /* --- events --- */
 $('#panel').addEventListener('click',e=>{
  const b=e.target.closest('[data-act]');if(!b||b.classList.contains('dis'))return;const a=b.dataset.act,id=b.dataset.id;
- if(COOP.on){const bad=COOP.role==='gather'?['cook','add','take','dump','accept','sell','neworder']:['enter'];if(bad.includes(a))return toast(COOP.role==='gather'?'Это работа зельевара 🧪':'Травы добывает добытчик ⚔️','warn')}
+ 
  if(a==='giveall'){const c={};for(const k in S.plants)if(S.plants[k]>0){c[k]=S.plants[k];S.plants[k]=0}if(!Object.keys(c).length)return toast('Трав нет','warn');coopSend({t:'herbs',c});save();toast('Отправлено: '+herbLine(c),'ok');renderAll();return}
  if(a==='bpage')turn(+b.dataset.n);else if(a==='bgo')goPage(+b.dataset.n);else if(a==='openbook')setTab('book');else if(a==='add')mixAdd(id);else if(a==='take')mixTake(id);else if(a==='dump')mixDump();else if(a==='cook')cook();else if(a==='trash')trashJunk();
  else if(a==='accept'){const i=S.orders.findIndex(o=>o.uid===b.dataset.uid);if(i<0)return;const o=S.orders[i];if(!o.taken)return;if((S.potions[o.id]||0)<o.qty)return toast('Не хватает зелий','warn');S.potions[o.id]-=o.qty;const tot=o.unit*o.qty;S.orders.splice(i,1);S.nextOrder=Date.now()+rint(15,30)*1000;SFX.coin();toast(`${o.cust.e} «${pick(THANKS)}» +${fmt(tot)} 🪙`,'gold');sellGain(tot);save();renderAll()}
@@ -1051,6 +1051,8 @@ function updateWorld(dt){
  for(const f of G.fx)f.life-=dt;G.fx=G.fx.filter(f=>f.life>0);
  for(const q of G.parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=Math.pow(.2,dt);q.vy*=Math.pow(.2,dt);q.life-=dt}G.parts=G.parts.filter(q=>q.life>0);
  for(const t of G.texts){t.y-=34*dt;t.life-=dt*.9}G.texts=G.texts.filter(t=>t.life>0);
+ const pp=COOP.pp;
+ if(COOP.on&&pp&&pp.w===G.wd.id&&Date.now()-pp.rt<4000){const tx=+pp.x||0,ty=+pp.y||0;if(!G.pv)G.pv={x:tx,y:ty,face:+pp.f||0,swing:0,aim:+pp.aim||0,moving:false,inv:0};const v=G.pv,k=Math.min(1,dt*9);v.moving=pp.mv===1;v.x+=(tx-v.x)*k;v.y+=(ty-v.y)*k;v.face=+pp.f||0;v.aim=+pp.aim||0;if(pp.t!==v.lt){v.lt=pp.t;v.swing=+pp.sw||0}else v.swing=Math.max(0,v.swing-dt)}else G.pv=null;
  // chimney smoke
  G.smoke-=dt;if(G.smoke<=0){G.smoke=.35;G.parts.push({x:HOUSE.x+46,y:HOUSE.y-96,vx:rnd(8,22),vy:-rnd(20,34),life:2.2,max:2.2,c:'rgba(255,255,255,.35)',s:7,g:0,soft:true})}
  // ambient
@@ -1092,17 +1094,17 @@ function drawHouse(x,t,near){
 const plantSpr={};
 function plantSprite(id){if(plantSpr[id])return plantSpr[id];const P=PLANTS[id],R2=2,c=document.createElement('canvas');c.width=128*R2;c.height=130*R2;const x=c.getContext('2d');x.scale(R2,R2);x.translate(64,104);
  const og=x.createRadialGradient(0,0,2,0,0,34);og.addColorStop(0,P.c+'66');og.addColorStop(1,P.c+'00');x.fillStyle=og;x.beginPath();x.ellipse(0,0,34,14,0,0,7);x.fill();drawPlant(x,P.t,P.c,1.15,0);return plantSpr[id]=c}
-function drawPlayer(x,p,t){
+function drawPlayer(x,p,t,skin,wid){skin=skin==='f'?'f':skin==='m'?'m':S.skin;wid=WEAPONS[wid]?wid:S.weapon;
  x.save();x.translate(p.x,p.y);x.fillStyle='rgba(0,0,0,.35)';x.beginPath();x.ellipse(0,2,16,6,0,0,7);x.fill();
  if(p.inv>0&&Math.floor(t*20)%2)x.globalAlpha=.45;
  const f=Math.cos(p.face)>=0?1:-1,bob=p.moving?Math.abs(Math.sin(t*12))*-3:Math.sin(t*3)*-1;x.translate(0,bob);x.lineCap='round';x.lineJoin='round';
- const wp=WEAPONS[S.weapon],hx=f*13,hy=-20;
+ const wp=WEAPONS[wid],hx=f*13,hy=-20;
  const idleA=f>0?-.55:Math.PI+.55;let ang=idleA;
  if(p.swing>0){const pr=1-p.swing/.2;ang=wp.type==='melee'?p.aim-wp.spread/2+wp.spread*pr:p.aim}
  // back weapon layer if facing away
  const drawW=()=>{x.save();x.translate(hx,hy);x.rotate(ang);drawWeapon(x,wp,.78);x.restore();x.fillStyle='#ffd9b8';x.beginPath();x.arc(hx,hy,4.5,0,7);x.fill()};
  if(f<0)drawW();
- const F=S.skin==='f',HAIR='#b5532f',sway=Math.sin(t*3)*2+(p.moving?Math.sin(t*12)*2:0);
+ const F=skin==='f',HAIR='#b5532f',sway=Math.sin(t*3)*2+(p.moving?Math.sin(t*12)*2:0);
  if(F){x.fillStyle=HAIR;x.beginPath();x.moveTo(-11,-46);x.quadraticCurveTo(-19,-24,-13+sway,-4);x.quadraticCurveTo(0,-1,13+sway,-4);x.quadraticCurveTo(19,-24,11,-46);x.closePath();x.fill();x.fillStyle='rgba(255,255,255,.18)';x.beginPath();x.ellipse(-9,-28,2,10,.1,0,7);x.fill()}
  const g=x.createLinearGradient(0,-38,0,2);
  if(F){g.addColorStop(0,'#ffb3e0');g.addColorStop(1,'#b03a8a');x.fillStyle=g;x.beginPath();x.moveTo(-22,2);x.quadraticCurveTo(-11,-8,-9,-31);x.quadraticCurveTo(0,-37,9,-31);x.quadraticCurveTo(11,-8,22,2);x.quadraticCurveTo(0,9,-22,2);x.fill();x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=1.2;x.beginPath();x.moveTo(-14,0);x.quadraticCurveTo(-8,-8,-5,-14);x.moveTo(14,0);x.quadraticCurveTo(8,-8,5,-14);x.stroke()}
@@ -1133,13 +1135,14 @@ function render(){
  for(const pl of G.plants)if(pl.x>x0&&pl.x<x1&&pl.y>y0&&pl.y<y1)ER.push({y:pl.y,k:0,o:pl});
  for(const m of G.mons)if(m.x>x0&&m.x<x1&&m.y>y0&&m.y<y1)ER.push({y:m.y,k:1,o:m});
  if(HOUSE.x+240>cam.x&&HOUSE.x-240<cam.x+vw&&HOUSE.y+280>cam.y&&HOUSE.y-200<cam.y+vh)ER.push({y:HOUSE.y+78,k:2});
- ER.push({y:p.y,k:3});
+ if(G.pv)ER.push({y:G.pv.y,k:4,o:G.pv});ER.push({y:p.y,k:3});
  ER.sort((a,b)=>a.y-b.y);
  for(const e of ER){
   if(e.k===0){const pl=e.o,gr=Math.min(1,pl.age),sm=gr*gr*(3-2*gr);if(sm<.02)continue;ctx.save();ctx.translate(pl.x,pl.y);ctx.rotate(Math.sin((t+pl.ph)*1.6)*.04);ctx.scale(sm,sm);ctx.drawImage(plantSprite(pl.id),-64,-104,128,130);ctx.restore()}
   else if(e.k===1){const m=e.o;ctx.save();ctx.translate(m.x,m.y);ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,2,m.d.r*1.1,m.d.r*.4,0,0,7);ctx.fill();drawMonster(ctx,m.d.type,m.d.c,m.d.r,t+m.ph,m.flash,m.lx,m.ly);
    if(m.hp<m.max){const bw=m.d.r*2.2,by=-m.d.r*(m.fly?4.2:2.9);ctx.fillStyle='rgba(0,0,0,.55)';rr(ctx,-bw/2,by,bw,5,2.5);ctx.fill();ctx.fillStyle='#ff4d6d';rr(ctx,-bw/2,by,bw*Math.max(0,m.hp/m.max),5,2.5);ctx.fill()}ctx.restore()}
   else if(e.k===2)drawHouse(ctx,t,near);
+  else if(e.k===4){const v=e.o,pp=COOP.pp||{},nm=String(pp.n||'Друг').slice(0,14);drawPlayer(ctx,v,t,pp.sk,pp.wp);ctx.save();ctx.font='800 13px Nunito,sans-serif';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.75)';ctx.strokeText(nm,v.x,v.y-84);ctx.fillStyle='#6dffb0';ctx.fillText(nm,v.x,v.y-84);ctx.restore()}
   else drawPlayer(ctx,p,t);
  }
  const tg=G.target;
@@ -1188,25 +1191,32 @@ function loop(ts){
 }
 
 /* ================= co-op ================= */
-const COOP={on:false,role:null,pc:null,dc:null,peer:null,need:{},xp:0},CN={gather:'Добытчик ⚔️',brew:'Зельевар 🧪'};
+const COOP={on:false,role:null,pc:null,dc:null,peer:null,need:{},xp:0},CN={gather:'Добытчик ⚔️',brew:'Зельевар 🧪',both:'Игрок'};
 const worldOf=k=>{const w=WORLDS.find(w=>w.plants.includes(k));return w?w.n:'?'};
 const herbLine=o=>Object.entries(o).filter(([,n])=>n>0).map(([k,n])=>`${PLANTS[k].n} ×${n}`).join(', ');
 function coopSend(m){if(!COOP.on||!RM||!FB)return;try{if(m.t==='status'||m.t==='need')FB.D.set(rf('st/'+FB.uid),m);else FB.D.push(rf('ev'),{f:FB.uid,m})}catch(e){}}
 function needList(){const need={};for(const o of S.orders){const mi=Math.max(0,o.qty-(S.potions[o.id]||0));if(!mi)continue;const r=RECIPES[o.id];for(const h in r.ing)need[h]=(need[h]||0)+r.ing[h]*mi}
  for(const h in need){need[h]-=(S.plants[h]||0)+(S.mix[h]||0);if(need[h]<=0)delete need[h]}return need}
-function coopBar(){if(!COOP.on)return'';const p=COOP.peer;
- if(COOP.role==='brew')return`<div class="cbar">🤝 Ты — ${CN.brew}. ${p?(p.w==='home'?'Добытчик в лагере':`Добытчик: ${p.w} · ❤ ${p.hp}/${p.mh} · несёт ${p.car} трав`):'Ждём добытчика…'} <button class="btn sec" data-act="gift" style="padding:6px 12px">🎁 Передать</button></div>`;
- const nl=herbLine(COOP.need);return`<div class="cbar">🤝 Ты — ${CN.gather}. ${nl?'Зельевару нужно: '+nl:'Зельевар пока ничего не просит.'} <button class="btn sec" data-act="giveall" style="padding:6px 12px">Отдать все травы</button> <button class="btn sec" data-act="gift" style="padding:6px 12px">🎁 Передать</button></div>`}
-function updCoopHud(){const el=$('#coop');if(!el)return;const t=COOP.on&&COOP.role==='gather'?Object.entries(COOP.need).slice(0,3).map(([k,n])=>`${PLANTS[k].n} ×${n} (${worldOf(k)})`).join(' · '):'';el.classList.toggle('hidden',!t);el.textContent=t?'🧪 Нужно зельевару: '+t:''}
+const pOK=()=>COOP.pp&&Date.now()-COOP.pp.rt<5000;
+const pWhere=()=>!pOK()?'нет связи…':COOP.pp.w==='home'?'в лагере':'в мире «'+((WORLDS.find(w=>w.id===COOP.pp.w)||{n:'?'}).n)+'»';
+function coopBar(){if(!COOP.on)return'';return`<div class="cbar">🤝 Друг: ${pWhere()} <button class="btn sec" data-act="gift" style="padding:6px 12px">🎁 Передать</button></div>`}
+let coopTxt='';
+function updCoopHud(){const el=$('#coop');if(!el)return;const t=COOP.on?'🤝 '+(pOK()&&COOP.pp.n?String(COOP.pp.n).slice(0,14):'Друг')+': '+(pOK()&&G&&COOP.pp.w===G.wd.id?'рядом!':pWhere()):'';if(t!==coopTxt){coopTxt=t;el.textContent=t;el.classList.toggle('hidden',!t)}}
 function coopRecv(m){
  if(m.t==='herbs'&&COOP.role==='brew'){for(const k in m.c)if(PLANTS[k])S.plants[k]=(S.plants[k]||0)+m.c[k];save();toast('🌿 Добытчик принёс: '+herbLine(m.c),'ok');renderAll()}
  else if(m.t==='status'){COOP.peer=m;const b=$('.cbar');if(b&&COOP.role==='brew')b.outerHTML=coopBar()}
  else if(m.t==='need'){COOP.need=m.n||{};updCoopHud();const b=$('.cbar');if(b&&COOP.role==='gather')b.outerHTML=coopBar()}
  else if(m.t==='gift')recvGift(m);else if(m.t==='chat')chatAdd(String(m.n||'Друг').slice(0,20),String(m.x||'').slice(0,120));else if(m.t==='share'){S.gold+=m.g;if(G)COOP.xp+=m.x;else gainXp(m.x);toast(`🤝 Доля от продажи: +${fmt(m.g)} 🪙`,'gold');save();renderHeader()}
 }
-setInterval(()=>{if(!COOP.on)return;
- if(COOP.role==='gather'){const car=G?Object.values(G.carried).reduce((a,b)=>a+b,0):0;coopSend({t:'status',w:G?G.wd.n:'home',hp:G?Math.ceil(G.p.hp):0,mh:maxHp(),car})}
- else coopSend({t:'need',n:needList()})},2000);
+let posLast='',posT=0;
+function posSend(){if(!COOP.on||!RM||!FB)return;const now=Date.now();let o;
+ if(G){const p=G.p;o={w:G.wd.id,n:myName(),x:Math.round(p.x),y:Math.round(p.y),f:+p.face.toFixed(2),mv:p.moving?1:0,sw:p.swing>0?+p.swing.toFixed(2):0,aim:+p.aim.toFixed(2),hp:Math.ceil(p.hp),mh:maxHp(),sk:S.skin,wp:S.weapon,t:now}}
+ else o={w:'home',n:myName(),sk:S.skin,wp:S.weapon,t:now};
+ const key=o.w+'|'+o.x+'|'+o.y+'|'+o.sw+'|'+o.mv;if(key===posLast&&now-posT<1000)return;posLast=key;posT=now;
+ try{FB.D.set(rf('pos/'+FB.uid),o)}catch(e){}}
+setInterval(posSend,160);
+let barTxt='';
+setInterval(()=>{if(!COOP.on){barTxt='';return}updCoopHud();const b=$('.cbar');if(b){const h=coopBar();if(h!==barTxt){barTxt=h;b.outerHTML=h}}},500);
 /* ===== ONLINE: Firebase Realtime Database, комната по коду из 5 цифр ===== */
 const FB_CFG={apiKey:'AIzaSyDAmS5KOx8hPPwu2lza9h4mnEX__SwfvPo',authDomain:'moon-7ebab.firebaseapp.com',databaseURL:'https://moon-7ebab-default-rtdb.firebaseio.com',projectId:'moon-7ebab',appId:'1:865264412984:web:6af3bb95283685222839cd'};
 let FB=null,RM=null;
@@ -1215,11 +1225,13 @@ async function fbInit(){if(FB)return FB;if(/ВСТАВЬ/.test(FB_CFG.apiKey))th
  const V='https://www.gstatic.com/firebasejs/10.14.1/',[A,D,U]=await Promise.all([import(V+'firebase-app.js'),import(V+'firebase-database.js'),import(V+'firebase-auth.js')]);
  const app=A.initializeApp(FB_CFG),au=U.getAuth(app);await U.signInAnonymously(au);return FB={D,db:D.getDatabase(app),uid:au.currentUser.uid}}
 function coopModal(h){const m=$('#modal');m.innerHTML=`<div class="mcard" style="max-width:420px;width:92%">${h}</div>`;m.classList.remove('hidden');const c=$('#cClose');if(c)c.onclick=()=>m.classList.add('hidden')}
-function coopOn(){chatAdd('','Друг в комнате. Ты — '+CN[COOP.role]+'. Команда /name Имя меняет ник.','sys');COOP.on=true;COOP.peer=null;toast('🤝 Друг в игре! Ты — '+CN[COOP.role],'ok');$('#modal').classList.add('hidden');renderAll()}
-function coopStop(){try{if(RM){(RM.un||[]).forEach(f=>f());if(RM.host)FB.D.remove(rf());else{FB.D.remove(rf('guest'));FB.D.remove(rf('st/'+FB.uid))}}}catch(e){}
- RM=null;COOP.on=false;COOP.peer=null;COOP.need={};cLog.innerHTML='';chatToggle(false);renderAll();updCoopHud()}
+function coopOn(){chatAdd('','Друг в комнате. Команда /name Имя меняет ник.','sys');COOP.on=true;COOP.peer=null;toast('🤝 Друг в игре!','ok');$('#modal').classList.add('hidden');renderAll()}
+function coopStop(){try{if(RM){(RM.un||[]).forEach(f=>f());if(RM.host)FB.D.remove(rf());else{FB.D.remove(rf('guest'));FB.D.remove(rf('st/'+FB.uid));FB.D.remove(rf('pos/'+FB.uid))}}}catch(e){}
+ RM=null;COOP.on=false;COOP.peer=null;COOP.pp=null;COOP.need={};cLog.innerHTML='';chatToggle(false);renderAll();updCoopHud()}
 function coopListen(){const D=FB.D,o=RM.host?'guest':'host';
- RM.un=[D.onValue(rf('st'),s=>{s.forEach(c=>{if(c.key!==FB.uid)coopRecv(c.val())})}),
+ try{D.onDisconnect(rf('pos/'+FB.uid)).remove()}catch(e){}
+ RM.un=[D.onValue(rf('pos'),s=>{const prev=COOP.pp;COOP.pp=null;s.forEach(c=>{if(c.key!==FB.uid){const v=c.val();if(v&&typeof v==='object'){v.rt=(prev&&prev.t===v.t)?prev.rt:Date.now();COOP.pp=v}}})}),
+  D.onValue(rf('st'),s=>{s.forEach(c=>{if(c.key!==FB.uid)coopRecv(c.val())})}),
   D.onChildAdded(rf('ev'),s=>{const v=s.val();if(v&&v.f!==FB.uid){coopRecv(v.m);D.remove(s.ref)}}),
   D.onValue(rf(o),s=>{if(s.exists()){if(!COOP.on)coopOn()}else if(COOP.on){toast('Друг вышел','warn');coopStop()}})]}
 function coopErr(e){const m=e&&e.message||e,t=m==='cfg'?'Онлайн ещё не настроен: вставь ключи Firebase в начало онлайн-блока скрипта (см. README).':m==='no'?'Комнаты с таким кодом нет. Проверь цифры.':m==='full'?'В этой комнате уже двое.':'Не получилось подключиться. Проверь интернет и настройки Firebase.';
@@ -1229,16 +1241,16 @@ async function coopCreate(role){coopModal('<h2>Создаю комнату…</h
   for(let i=0;i<8&&!code;i++){const c=String(rint(10000,99999));RM={code:c};if(!(await D.get(rf())).exists())code=c}
   if(!code)throw 0;RM={code,host:true,un:[]};COOP.role=role;
   await D.set(rf(),{host:FB.uid,hr:role,t:Date.now()});D.onDisconnect(rf()).remove();coopListen();
-  coopModal(`<h2>Код комнаты</h2><div class="ccode">${code}</div><p class="sub">Назови код другу: «Играть вдвоём» → «Войти». Ты — ${CN[role]}. Ждём друга…</p><div class="row" style="justify-content:center"><button class="btn red" id="cOff">Отмена</button></div>`);
+  coopModal(`<h2>Код комнаты</h2><div class="ccode">${code}</div><p class="sub">Назови код другу: «Играть вдвоём» → «Войти». Ждём друга…</p><div class="row" style="justify-content:center"><button class="btn red" id="cOff">Отмена</button></div>`);
   $('#cOff').onclick=()=>{coopStop();$('#modal').classList.add('hidden')}}catch(e){RM=null;coopErr(e)}}
 async function coopJoin(code){coopModal('<h2>Подключаюсь…</h2>');
  try{await fbInit();const D=FB.D;RM={code,host:false,un:[]};const s=await D.get(rf());if(!s.exists())throw 'no';const v=s.val();if(v.guest)throw 'full';
   const r=await D.runTransaction(rf('guest'),c=>c?undefined:FB.uid);if(!r.committed)throw 'full';
-  COOP.role=v.hr==='gather'?'brew':'gather';D.onDisconnect(rf('guest')).remove();coopListen()}catch(e){RM=null;coopErr(e)}}
+  COOP.role='both';D.onDisconnect(rf('guest')).remove();coopListen()}catch(e){RM=null;coopErr(e)}}
 function coopMenu(){
- if(RM){coopModal(`<h2>🤝 Онлайн</h2><p class="sub">${COOP.on?'Друг в игре. Ты — '+CN[COOP.role]+'.':'Ждём друга…'} Код комнаты: <b>${RM.code}</b></p><div class="row" style="justify-content:center">${COOP.on?'<button class="btn" id="cGift">🎁 Передать</button>':''}<button class="btn red" id="cOff">Отключиться</button><button class="btn sec" id="cClose">Закрыть</button></div>`);$('#cOff').onclick=()=>{coopStop();$('#modal').classList.add('hidden')};const gg=$('#cGift');if(gg)gg.onclick=()=>giftModal();return}
- coopModal(`<h2>🤝 Играть вдвоём</h2><p class="sub">⚔️ Добытчик собирает травы в мирах, 🧪 Зельевар варит и продаёт. Травы летят зельевару, а доход делится.</p><div class="sect" style="margin:6px 0">Создать комнату — я:</div><div class="row" style="justify-content:center"><button class="btn" id="cH1">⚔️ Добытчик</button><button class="btn" id="cH2">🧪 Зельевар</button></div><div class="sect" style="margin:14px 0 6px">Есть код друга?</div><input id="cIn" inputmode="numeric" maxlength="5" placeholder="•••••" autocomplete="off"><div class="row" style="justify-content:center;margin-top:10px"><button class="btn go" id="cJ">Войти</button><button class="btn sec" id="cClose">Закрыть</button></div>`);
- $('#cH1').onclick=()=>coopCreate('gather');$('#cH2').onclick=()=>coopCreate('brew');
+ if(RM){coopModal(`<h2>🤝 Онлайн</h2><p class="sub">${COOP.on?'Друг в игре.':'Ждём друга…'} Код комнаты: <b>${RM.code}</b></p><div class="row" style="justify-content:center">${COOP.on?'<button class="btn" id="cGift">🎁 Передать</button>':''}<button class="btn red" id="cOff">Отключиться</button><button class="btn sec" id="cClose">Закрыть</button></div>`);$('#cOff').onclick=()=>{coopStop();$('#modal').classList.add('hidden')};const gg=$('#cGift');if(gg)gg.onclick=()=>giftModal();return}
+ coopModal(`<h2>🤝 Играть вдвоём</h2><p class="sub">Вы вдвоём ходите по одному миру и видите друг друга. Каждый сам собирает травы, сражается, варит и продаёт. Друг друга бить нельзя. Травы, зелья и оружие можно передавать кнопкой «🎁 Передать».</p><div class="row" style="justify-content:center"><button class="btn" id="cH1">➕ Создать комнату</button></div><div class="sect" style="margin:14px 0 6px">Есть код друга?</div><input id="cIn" inputmode="numeric" maxlength="5" placeholder="•••••" autocomplete="off"><div class="row" style="justify-content:center;margin-top:10px"><button class="btn go" id="cJ">Войти</button><button class="btn sec" id="cClose">Закрыть</button></div>`);
+ $('#cH1').onclick=()=>coopCreate('both');
  $('#cIn').oninput=e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,5)};
  $('#cJ').onclick=()=>{const c=$('#cIn').value;c.length===5?coopJoin(c):toast('Нужен код из 5 цифр','warn')}}
 let giftCat='plants';
