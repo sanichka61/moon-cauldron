@@ -540,7 +540,7 @@ let S;
 try{S=JSON.parse(localStorage.getItem('lunarCauldron')||'null')}catch(e){S=null}
 S=Object.assign(fresh(),S||{});
 function save(){try{localStorage.setItem('lunarCauldron',JSON.stringify(S))}catch(e){}}
-const xpNeed=l=>Math.round(50*Math.pow(l,1.5));
+const xpNeed=l=>Math.round(100*Math.pow(l,1.8));
 const maxHp=()=>100+25*S.hpUp;
 const price=id=>Math.round(RECIPES[id].base*S.market[id]);
 
@@ -721,7 +721,7 @@ function recPage(id,i,side){const r=RECIPES[id],lk=S.lvl<r.lvl;
  const mk=maxK(id),k=Math.min(mk,Math.floor(MAXMIX/recTotal(r))),want=S.orders.some(o=>o.id===id);
  const sp=Object.entries(r.ing).map(([h,n])=>{const c=S.plants[h]||0;return`<div class="spec ${c>=n?'':'no'}"><img src="${icon('plant',h)}"><b>×${n}</b><span>${PLANTS[h].n}</span><i>${worldOf(h)}</i><u>есть ${c}</u></div>`}).join('');
  return`<div class="pg ${side}"><div class="pgh">Зелья · уровень ${r.lvl}</div><div class="rp"><div class="rmed" style="--c:${r.c}"><img src="${icon('potion',id)}"></div><div class="rname">${r.n}</div><div class="rsub">≈ ${price(id)} 🪙 за штуку${want?' · 📜 просят в заказах':''}</div><div class="rorn">❦</div><div class="rlab">Ингредиенты</div><div class="specs">${sp}</div>
- ${k>0?`<button class="btn go bkgo" data-act="tocauldron" data-id="${id}">🧪 В котёл ×${k}</button>`:'<div class="note">Не хватает трав — красным то, чего мало.</div>'}<div class="es" style="max-width:250px;margin-top:6px">Клади ровно по рецепту. Любая другая смесь — бурда.</div></div><div class="pgn">— ${i+1} —</div></div>`}
+ <div class="es" style="max-width:250px;margin-top:6px">Клади ровно по рецепту. Любая другая смесь — бурда.</div></div><div class="pgn">— ${i+1} —</div></div>`}
 function pageHTML(i,side){if(i<0||i>=bookPages())return`<div class="pg blank ${side}">✦</div>`;
  const id=bookIds()[i];if(!id)return`<div class="pg blank ${side}"><div>✦<div class="note" style="margin-top:8px">Конец книги</div></div></div>`;return recPage(id,i,side)}
 function navHTML(){const np=bookPages(),L=baseL(),st=WIDE()?2:1;
@@ -745,11 +745,6 @@ document.addEventListener('keydown',e=>{if(tab==='book'&&!$('#home').classList.c
 let swX=null;document.addEventListener('touchstart',e=>{swX=e.target.closest('#tbook')?e.touches[0].clientX:null},{passive:true});
 document.addEventListener('touchend',e=>{if(swX===null)return;const dx=e.changedTouches[0].clientX-swX;swX=null;if(Math.abs(dx)>45)turn(dx<0?1:-1)},{passive:true});
 document.addEventListener('click',e=>{const t=e.target.closest('#tbook');if(!t||e.target.closest('button'))return;const r=t.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;if(x<.15)turn(-1);else if(x>.85)turn(1)});
-function toCauldron(id){if(brewing||S.lvl<RECIPES[id].lvl)return;const r=RECIPES[id];
- for(const h in S.mix)S.plants[h]=(S.plants[h]||0)+S.mix[h];S.mix={};
- const k=Math.min(maxK(id),Math.floor(MAXMIX/recTotal(r)));if(k<1){save();return renderAll()}
- for(const h in r.ing){S.plants[h]-=r.ing[h]*k;S.mix[h]=r.ing[h]*k}
- SFX.pick();save();toast(`В котле: ${r.n} ×${k} — жми «Варить»`,'ok');setTab('brew');renderAll()}
 function mixAdd(k){if(brewing||!(S.plants[k]>0))return;if(mixN()>=MAXMIX)return toast('Котёл полон','warn');S.plants[k]--;S.mix[k]=(S.mix[k]||0)+1;SFX.pick();save();renderAll()}
 function mixTake(k){if(brewing||!S.mix[k])return;S.mix[k]--;if(!S.mix[k])delete S.mix[k];S.plants[k]=(S.plants[k]||0)+1;save();renderAll()}
 function mixDump(){if(brewing||!mixN())return;S.mix={};SFX.hurt();toast('Всё выплеснуто 💦','warn');save();renderAll()}
@@ -758,24 +753,37 @@ function showRes(e,t,d){const mo=$('#modal');mo.innerHTML=`<div class="mcard"><d
 function spoil(c,why){S.mix={};S.junk+=c;SFX.hurt();save();renderAll();showRes('🤢','Зелье испорчено!',`${why} Вышла бурда ×${c} — её можно только выбросить.`)}
 function cook(){if(brewing||!mixN())return;const m=mixMatch(),n=mixN();if(!m)return spoil(Math.max(1,Math.ceil(n/3)),'Такой смеси нет ни в одном рецепте.');stir(m.id,m.k)}
 function stir(id,k){
- const r=RECIPES[id],mo=$('#modal'),w=clamp(.32-r.lvl*.016,.14,.32);let rd=0,perf=true,done=false,c=rnd(.2,.8);const t0=performance.now();brewing=true;
- mo.innerHTML=`<div class="mcard"><h2>Мешай!</h2><p class="sub">Жми, когда белый бегунок в зелёной зоне. Раунд <b id="sr">1</b>/3</p><div class="sbar"><i id="sz"></i><u id="sp"></u></div><button class="btn go" id="sGo">🥄 Мешать!</button></div>`;mo.classList.remove('hidden');
- const sz=$('#sz'),sp=$('#sp'),sr=$('#sr'),pos=()=>{const ph=((performance.now()-t0)/1000*(.9+rd*.4)*(1+r.lvl*.05))%2;return ph<1?ph:2-ph};
- const place=()=>{sz.style.left=(c-w/2)*100+'%';sz.style.width=w*100+'%'};place();
- (function tick(){if(done)return;sp.style.left=pos()*100+'%';requestAnimationFrame(tick)})();
- $('#sGo').onclick=()=>{if(done)return;const d=Math.abs(pos()-c);
-  if(d>w/2){done=true;brewing=false;mo.classList.add('hidden');return spoil(k,'Ты промахнулся, и смесь свернулась.')}
-  if(d>w*.2)perf=false;SFX.brew();rd++;
-  if(rd>=3){done=true;brewing=false;mo.classList.add('hidden');return finish(id,k,perf)}
-  sr.textContent=rd+1;c=rnd(.2,.8);place()};
+ const r=RECIPES[id],mo=$('#modal'),TURNS=5+Math.min(4,Math.floor(r.lvl/3));let prog=0,done=false,last=null,sx=0,sy=0;brewing=true;
+ mo.innerHTML=`<div class="mcard" style="max-width:340px;width:92%"><h2>Мешай!</h2><p class="sub">Води пальцем (или мышкой) по кругу в котле, пока не наполнится до 100%</p>
+ <div id="stArea" style="position:relative;width:240px;height:240px;margin:6px auto;border-radius:50%;touch-action:none;cursor:grab;background:radial-gradient(circle,${mixColor()} 0,rgba(0,0,0,.55) 100%);border:6px solid #7a7aa8;box-shadow:inset 0 0 40px rgba(0,0,0,.6),0 0 30px ${mixColor()}">
+ <div id="stSwirl" style="position:absolute;inset:18%;border-radius:50%;border:3px dashed rgba(255,255,255,.4)"></div>
+ <div id="stSpoon" style="position:absolute;left:50%;top:50%;font-size:46px;margin:-24px 0 0 -24px;pointer-events:none;filter:drop-shadow(0 4px 6px #000)">🥄</div></div>
+ <div class="pbar"><i id="stBar"></i></div><div class="fancy" style="font-size:22px;color:var(--gold)" id="stPct">0%</div>
+ <div class="row" style="justify-content:center;margin-top:10px"><button class="btn sec" id="stCancel">Отмена</button></div></div>`;mo.classList.remove('hidden');
+ const A=$('#stArea'),sw=$('#stSwirl'),sp=$('#stSpoon'),bar=$('#stBar'),pct=$('#stPct');let rot=0,tick=0;
+ const ang=e=>{const b=A.getBoundingClientRect(),dx=e.clientX-(b.left+b.width/2),dy=e.clientY-(b.top+b.height/2);return{a:Math.atan2(dy,dx),d:Math.hypot(dx,dy),dx,dy,R:b.width/2}};
+ A.addEventListener('pointerdown',e=>{if(done)return;try{A.setPointerCapture(e.pointerId)}catch(_){}const c=ang(e);last=c.d>20?c.a:null;A.style.cursor='grabbing'});
+ A.addEventListener('pointermove',e=>{if(done||last===null&&e.buttons===0)return;const c=ang(e),lim=c.R-24,k2=c.d>lim?lim/c.d:1;
+  sp.style.transform=`translate(${c.dx*k2}px,${c.dy*k2}px)`;
+  if(e.buttons===0&&e.pointerType==='mouse'){last=null;return}
+  if(c.d<24){last=null;return}
+  if(last===null){last=c.a;return}
+  let d=c.a-last;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;last=c.a;
+  const ad=Math.abs(d);if(ad>1.2)return;
+  prog=Math.min(1,prog+ad/(Math.PI*2*TURNS));rot+=d*57.3;sw.style.transform=`rotate(${rot}deg)`;
+  if(++tick%6===0)SFX.brew();
+  bar.style.width=prog*100+'%';pct.textContent=Math.floor(prog*100)+'%';
+  if(prog>=1&&!done){done=true;brewing=false;mo.classList.add('hidden');finish(id,k)}});
+ const up=()=>{last=null;A.style.cursor='grab'};A.addEventListener('pointerup',up);A.addEventListener('pointercancel',up);
+ $('#stCancel').onclick=()=>{if(done)return;done=true;brewing=false;mo.classList.add('hidden');renderAll()};
 }
-function finish(id,k,perf){const n=k+(perf?1:0),first=!S.known[id];S.mix={};S.potions[id]=(S.potions[id]||0)+n;S.known[id]=true;SFX.coin();save();renderAll();
- showRes(perf?'🌟':'🧪',perf?'Идеально!':'Готово!',`${RECIPES[id].n} ×${n}${perf?'<br>Бонусное зелье за идеальное помешивание!':''}`)}
+function finish(id,k){S.mix={};S.potions[id]=(S.potions[id]||0)+k;S.known[id]=true;SFX.coin();save();renderAll();
+ showRes('🧪','Готово!',`${RECIPES[id].n} ×${k}`)}
 /* --- orders --- */
 function newOrder(){
  const ids=Object.keys(RECIPES).filter(k=>RECIPES[k].lvl<=S.lvl);const id=pick(ids),r=RECIPES[id];
- const qty=rint(1,Math.max(2,6-Math.floor(r.lvl/2))),mult=rnd(.7,1.55),c=pick(CUST),dur=rint(150,300)*1000;
- return{uid:Math.random().toString(36).slice(2),id,qty,unit:Math.max(1,Math.round(price(id)*mult)),cust:{n:c[0],e:c[1],c:c[2],q:pick(LINES)},exp:Date.now()+dur,dur};
+ const qty=rint(1,Math.max(2,6-Math.floor(r.lvl/2))),mult=rnd(.7,1.55),c=pick(CUST),dur=rint(110,210)*1000;
+ return{uid:Math.random().toString(36).slice(2),id,qty,unit:Math.max(1,Math.round(price(id)*mult)),cust:{n:c[0],e:c[1],c:c[2],q:pick(LINES)},taken:false,exp:0,dur};
 }
 function ordersHTML(){
  const now=Date.now();
@@ -784,14 +792,14 @@ function ordersHTML(){
   return`<div class="order"><div class="avatar" style="--av:${o.cust.c}">${o.cust.e}</div><div class="ocust"><b>${o.cust.n}</b><div class="quote">«${o.cust.q}»</div></div>
   <div class="owant"><img src="${icon('potion',o.id)}"><div>${RECIPES[o.id].n}<div style="font-size:13px;color:${ok?'var(--ok)':'var(--bad)'}">× ${o.qty} (есть ${have})</div></div></div>
   <div class="oprice"><div class="t">${fmt(o.unit*o.qty)} 🪙</div><div style="font-size:12px;color:var(--mut)">${o.unit} за шт.</div>${tag}</div>
-  <div class="row"><button class="btn ${ok?'go':'dis'}" data-act="accept" data-uid="${o.uid}">Отдать</button><button class="btn sec" data-act="decline" data-uid="${o.uid}">✕</button></div>
-  <div class="tbar"><i data-exp="${o.exp}" data-dur="${o.dur}" style="width:${clamp((o.exp-now)/o.dur*100,0,100)}%"></i></div></div>`}).join(''):'<div class="empty">Заказчиков пока нет — скоро кто-нибудь постучится в дверь…</div>';
+  ${o.taken?`<div class="row"><button class="btn ${ok?'go':'dis'}" data-act="accept" data-uid="${o.uid}">Отдать</button><button class="btn sec" data-act="decline" data-uid="${o.uid}">✕</button></div>`:`<div class="row"><button class="btn" data-act="takeord" data-uid="${o.uid}">📜 Взять заказ</button><button class="btn sec" data-act="decline" data-uid="${o.uid}">✕</button></div>`}
+  ${o.taken?`<div class="tbar"><i data-exp="${o.exp}" data-dur="${o.dur}" style="width:${clamp((o.exp-now)/o.dur*100,0,100)}%"></i></div>`:`<div style="width:100%;font-size:12px;color:var(--mut)">⏱ Время пойдёт после «Взять заказ»: ${Math.round(o.dur/6000)/10} мин</div>`}</div>`}).join(''):'<div class="empty">Заказчиков пока нет — скоро кто-нибудь постучится в дверь…</div>';
  const po=Object.keys(RECIPES).filter(k=>S.potions[k]>0);
  const stall=po.length?`<div class="grid">${po.map(k=>{const u=Math.round(price(k)*.85);return`<div class="card"><div class="hd"><img src="${icon('potion',k)}"><div><div class="nm">${RECIPES[k].n}</div><div class="pr">${u} 🪙 за шт. · есть ${S.potions[k]}</div></div></div><div class="row" style="margin-top:10px"><button class="btn sec" data-act="sell" data-id="${k}" data-n="1">Продать 1</button><button class="btn sec" data-act="sell" data-id="${k}" data-n="${S.potions[k]}">Все ×${S.potions[k]}</button></div></div>`}).join('')}</div>`:'<div class="empty">Сваренных зелий нет.</div>';
- return`<h2>📜 Заказы</h2><div class="sub">Заказчики платят по-разному: кто-то щедрее рынка, кто-то торгуется. Продажа даёт золото и опыт.</div>${list}
+ return`<h2>📜 Заказы</h2><div class="sub">Заказчик приходит по одному: нажми «Взять заказ» — и время пойдёт. Кто-то платит щедрее рынка, кто-то торгуется. Продажа даёт золото и опыт.</div>${list}
  <div class="sect">🏪 Рыночный прилавок <span style="font-size:13px;color:var(--mut);font-family:Nunito">(−15% к рынку, но сразу)</span></div>${stall}`;
 }
-function sellGain(total){if(COOP.on&&COOP.role==='brew')coopSend({t:'share',g:Math.round(total*.4),x:Math.round(total*.3)});S.gold+=total;gainXp(Math.round(total*.6))}
+function sellGain(total){if(COOP.on&&COOP.role==='brew')coopSend({t:'share',g:Math.round(total*.4),x:Math.round(total*.15)});S.gold+=total;gainXp(Math.round(total*.3))}
 function gainXp(n){
  S.xp+=n;const ups=[];
  while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;ups.push(S.lvl)}
@@ -808,7 +816,7 @@ function wcard(id){
   const tp=W.type==='melee'?'Ближний бой':W.type==='ranged'?(W.pierce?'Дальний · пробивает':'Дальний бой'):'Магия по области',pk=perks(W);
   return`<div class="card wpn ${eq?'eq':''} ${lock&&!own?'locked':''}" ${rc?`style="border-color:${rc}"`:''}><div class="hd"><img src="${icon('weapon',id,64)}" style="width:64px;height:64px"><div><div class="nm" ${rc?`style="color:${rc}"`:''}>${W.n}</div><div class="pr">${W.box?RAR[W.rar][0]:(W.price?fmt(W.price)+' 🪙':'Бесплатно')}</div></div></div>
   <div class="desc">${W.d}</div><div class="stats">⚔ Урон: <b>${W.dmg}</b> · ⏱ Удар/сек: <b>${(1/W.cd).toFixed(1)}</b><br>${tp}${pk?'<br>'+pk:''}</div>
-  ${eq?'<button class="btn sec dis">✔ Экипировано</button>':own?`<button class="btn go" data-act="equip" data-id="${id}">Взять в руки</button>`:`<button class="btn ${S.gold<W.price||lock?'dis':''}" data-act="buy" data-id="${id}">Купить</button>`}
+  ${eq?'<button class="btn sec dis">✔ Экипировано</button>':own?`<div class="row"><button class="btn go" data-act="equip" data-id="${id}">Взять в руки</button>${id!=='stick'?`<button class="btn sec" data-act="sellw" data-id="${id}">💰 Продать</button>`:''}</div>`:`<button class="btn ${S.gold<W.price||lock?'dis':''}" data-act="buy" data-id="${id}">Купить</button>`}
   ${lock&&!own?`<div class="lockov">🔒 Уровень ${W.lvl}</div>`:''}</div>`}
 let wSel=null;
 function shopHTML(){
@@ -817,7 +825,7 @@ function shopHTML(){
  const tiles=own.map(i=>{const W=WEAPONS[i],rc=W.rar?RAR[W.rar][1]:'#c8a26b';return`<button class="wtile ${S.weapon===i?'eq':''} ${sel===i?'sel':''}" style="--rc:${rc}" data-act="wsel" data-id="${i}"><img src="${icon('weapon',i,48)}">${W.n}${S.weapon===i?'<span class="ck">✔</span>':''}</button>`}).join('');
  const hp=S.hpUp<HP_UP.length?`<div class="card"><div class="hd"><div style="font-size:44px">🛡️</div><div><div class="nm">Закалённый плащ</div><div class="pr">${fmt(HP_UP[S.hpUp])} 🪙</div></div></div><div class="stats" style="font-size:12px;color:var(--mut);margin:8px 0">❤ Макс. здоровье +25 (сейчас ${maxHp()})</div><button class="btn ${S.gold<HP_UP[S.hpUp]?'dis':''}" data-act="hpup">Улучшить</button></div>`:'<div class="card"><div class="nm">🛡️ Плащ — максимум</div></div>';
  const sp=S.spUp<SP_UP.length?`<div class="card"><div class="hd"><div style="font-size:44px">👢</div><div><div class="nm">Сапоги-скороходы</div><div class="pr">${fmt(SP_UP[S.spUp])} 🪙</div></div></div><div class="stats" style="font-size:12px;color:var(--mut);margin:8px 0">💨 Скорость +7% (уровень ${S.spUp}/${SP_UP.length})</div><button class="btn ${S.gold<SP_UP[S.spUp]?'dis':''}" data-act="spup">Улучшить</button></div>`:'<div class="card"><div class="nm">👢 Сапоги — максимум</div></div>';
- return`<h2>⚔️ Лавка</h2><div class="sub">Оружие выпадает только из ящиков. Дубликат возвращает половину цены.</div><div class="sect">🎁 Ящики</div><div class="grid">${bx}</div><div class="sect">🎒 Инвентарь оружия: ${own.length}/${ids.length}</div><div class="wgrid">${tiles}</div><div style="margin-top:12px">${wcard(sel)}</div><div class="sect">Снаряжение</div><div class="grid">${hp}${sp}</div>`;
+ return`<h2>⚔️ Лавка</h2><div class="sub">Оружие выпадает только из ящиков. Дубликат возвращает половину цены. Ненужное оружие можно продать — цена как повезёт.</div>${coopBar()}<div class="sect">🎁 Ящики</div><div class="grid">${bx}</div><div class="sect">🎒 Инвентарь оружия: ${own.length}/${ids.length}</div><div class="wgrid">${tiles}</div><div style="margin-top:12px">${wcard(sel)}</div><div class="sect">Снаряжение</div><div class="grid">${hp}${sp}</div>`;
 }
 function openBox(t){
  const B=BOXES[t];if(S.gold<B.price)return toast('Не хватает золота','warn');S.gold-=B.price;
@@ -840,11 +848,14 @@ function worldsHTML(){
 /* --- events --- */
 $('#panel').addEventListener('click',e=>{
  const b=e.target.closest('[data-act]');if(!b||b.classList.contains('dis'))return;const a=b.dataset.act,id=b.dataset.id;
- if(COOP.on){const bad=COOP.role==='gather'?['cook','add','take','dump','accept','sell']:['enter'];if(bad.includes(a))return toast(COOP.role==='gather'?'Это работа зельевара 🧪':'Травы добывает добытчик ⚔️','warn')}
+ if(COOP.on){const bad=COOP.role==='gather'?['cook','add','take','dump','accept','sell','takeord']:['enter'];if(bad.includes(a))return toast(COOP.role==='gather'?'Это работа зельевара 🧪':'Травы добывает добытчик ⚔️','warn')}
  if(a==='giveall'){const c={};for(const k in S.plants)if(S.plants[k]>0){c[k]=S.plants[k];S.plants[k]=0}if(!Object.keys(c).length)return toast('Трав нет','warn');coopSend({t:'herbs',c});save();toast('Отправлено: '+herbLine(c),'ok');renderAll();return}
- if(a==='bpage')turn(+b.dataset.n);else if(a==='bgo')goPage(+b.dataset.n);else if(a==='tocauldron')toCauldron(id);else if(a==='openbook')setTab('book');else if(a==='add')mixAdd(id);else if(a==='take')mixTake(id);else if(a==='dump')mixDump();else if(a==='cook')cook();else if(a==='trash')trashJunk();
- else if(a==='accept'){const i=S.orders.findIndex(o=>o.uid===b.dataset.uid);if(i<0)return;const o=S.orders[i];if((S.potions[o.id]||0)<o.qty)return toast('Не хватает зелий','warn');S.potions[o.id]-=o.qty;const tot=o.unit*o.qty;S.orders.splice(i,1);SFX.coin();toast(`${o.cust.e} «${pick(THANKS)}» +${fmt(tot)} 🪙`,'gold');sellGain(tot);save();renderAll()}
- else if(a==='decline'){S.orders=S.orders.filter(o=>o.uid!==b.dataset.uid);save();renderAll()}
+ if(a==='bpage')turn(+b.dataset.n);else if(a==='bgo')goPage(+b.dataset.n);else if(a==='openbook')setTab('book');else if(a==='add')mixAdd(id);else if(a==='take')mixTake(id);else if(a==='dump')mixDump();else if(a==='cook')cook();else if(a==='trash')trashJunk();
+ else if(a==='accept'){const i=S.orders.findIndex(o=>o.uid===b.dataset.uid);if(i<0)return;const o=S.orders[i];if(!o.taken)return;if((S.potions[o.id]||0)<o.qty)return toast('Не хватает зелий','warn');S.potions[o.id]-=o.qty;const tot=o.unit*o.qty;S.orders.splice(i,1);S.nextOrder=Date.now()+rint(15,30)*1000;SFX.coin();toast(`${o.cust.e} «${pick(THANKS)}» +${fmt(tot)} 🪙`,'gold');sellGain(tot);save();renderAll()}
+ else if(a==='takeord'){const o=S.orders.find(o=>o.uid===b.dataset.uid);if(!o||o.taken)return;o.taken=true;o.exp=Date.now()+o.dur;SFX.pick();toast('📜 Заказ принят — время пошло!','ok');save();renderAll()}
+ else if(a==='gift')giftModal();
+ else if(a==='sellw'){const W=WEAPONS[id];if(!W||id==='stick'||!S.owned.includes(id))return;if(!confirm('Продать «'+W.n+'»? Цена случайная: либо мало (≈15–35% стоимости), либо много (≈70–110%).'))return;const lucky=Math.random()<.5,g=Math.max(1,Math.round(W.price*(lucky?rnd(.7,1.1):rnd(.15,.35))));S.owned=S.owned.filter(x=>x!==id);if(S.weapon===id)S.weapon='stick';wSel=null;S.gold+=g;SFX.coin();toast(lucky?`🍀 Повезло! Скупщик дал ${fmt(g)} 🪙`:`😕 Скупщик дал только ${fmt(g)} 🪙`,lucky?'gold':'warn');save();renderAll()}
+ else if(a==='decline'){S.orders=S.orders.filter(o=>o.uid!==b.dataset.uid);S.nextOrder=Date.now()+rint(15,30)*1000;save();renderAll()}
  else if(a==='sell'){const n=Math.min(+b.dataset.n,S.potions[id]||0);if(n<1)return;const tot=Math.round(price(id)*.85)*n;S.potions[id]-=n;SFX.coin();toast(`Продано ×${n} за ${fmt(tot)} 🪙`,'gold');sellGain(tot);save();renderAll()}
  else if(a==='buy'){const W=WEAPONS[id];if(S.gold<W.price)return;S.gold-=W.price;S.owned.push(id);S.weapon=id;SFX.buy();toast(`Куплено: ${W.n}`,'ok');save();renderAll()}
  else if(a==='box')openBox(id)
@@ -865,8 +876,8 @@ function renderAll(){renderHeader();renderInv();renderPanel()}
 let marketT=0;
 setInterval(()=>{
  const now=Date.now();let ch=false;
- const before=S.orders.length;S.orders=S.orders.filter(o=>o.exp>now);if(S.orders.length!==before)ch=true;
- if(S.orders.length<5&&now>=S.nextOrder){S.orders.push(newOrder());S.nextOrder=now+rint(12,28)*1000;ch=true;if(!$('#home').classList.contains('hidden'))toast('📜 Новый заказчик!','')}
+ const before=S.orders.length;S.orders=S.orders.filter(o=>!o.taken||o.exp>now);if(S.orders.length!==before){ch=true;S.nextOrder=now+rint(15,30)*1000}
+ if(S.orders.length<1&&now>=S.nextOrder){S.orders.push(newOrder());ch=true}
  marketT++;if(marketT>=20){marketT=0;for(const k in S.market){S.prev[k]=S.market[k];S.market[k]=clamp(S.market[k]+rnd(-.1,.1),.75,1.3)}ch=true}
  if(ch){save();if(!$('#home').classList.contains('hidden')&&(tab==='orders'||(tab==='brew'&&marketT===0&&!brewing)))renderPanel();else $('#ordBadge').textContent=S.orders.length}
  else if(tab==='orders')$$('.tbar i').forEach(i=>i.style.width=clamp((+i.dataset.exp-now)/+i.dataset.dur*100,0,100)+'%');
@@ -1178,20 +1189,20 @@ function coopSend(m){if(!COOP.on||!RM||!FB)return;try{if(m.t==='status'||m.t==='
 function needList(){const need={};for(const o of S.orders){const mi=Math.max(0,o.qty-(S.potions[o.id]||0));if(!mi)continue;const r=RECIPES[o.id];for(const h in r.ing)need[h]=(need[h]||0)+r.ing[h]*mi}
  for(const h in need){need[h]-=(S.plants[h]||0)+(S.mix[h]||0);if(need[h]<=0)delete need[h]}return need}
 function coopBar(){if(!COOP.on)return'';const p=COOP.peer;
- if(COOP.role==='brew')return`<div class="cbar">🤝 Ты — ${CN.brew}. ${p?(p.w==='home'?'Добытчик в лагере':`Добытчик: ${p.w} · ❤ ${p.hp}/${p.mh} · несёт ${p.car} трав`):'Ждём добытчика…'}</div>`;
- const nl=herbLine(COOP.need);return`<div class="cbar">🤝 Ты — ${CN.gather}. ${nl?'Зельевару нужно: '+nl:'Зельевар пока ничего не просит.'} <button class="btn sec" data-act="giveall" style="padding:6px 12px">Отдать все травы</button></div>`}
+ if(COOP.role==='brew')return`<div class="cbar">🤝 Ты — ${CN.brew}. ${p?(p.w==='home'?'Добытчик в лагере':`Добытчик: ${p.w} · ❤ ${p.hp}/${p.mh} · несёт ${p.car} трав`):'Ждём добытчика…'} <button class="btn sec" data-act="gift" style="padding:6px 12px">🎁 Передать</button></div>`;
+ const nl=herbLine(COOP.need);return`<div class="cbar">🤝 Ты — ${CN.gather}. ${nl?'Зельевару нужно: '+nl:'Зельевар пока ничего не просит.'} <button class="btn sec" data-act="giveall" style="padding:6px 12px">Отдать все травы</button> <button class="btn sec" data-act="gift" style="padding:6px 12px">🎁 Передать</button></div>`}
 function updCoopHud(){const el=$('#coop');if(!el)return;const t=COOP.on&&COOP.role==='gather'?Object.entries(COOP.need).slice(0,3).map(([k,n])=>`${PLANTS[k].n} ×${n} (${worldOf(k)})`).join(' · '):'';el.classList.toggle('hidden',!t);el.textContent=t?'🧪 Нужно зельевару: '+t:''}
 function coopRecv(m){
  if(m.t==='herbs'&&COOP.role==='brew'){for(const k in m.c)if(PLANTS[k])S.plants[k]=(S.plants[k]||0)+m.c[k];save();toast('🌿 Добытчик принёс: '+herbLine(m.c),'ok');renderAll()}
  else if(m.t==='status'){COOP.peer=m;const b=$('.cbar');if(b&&COOP.role==='brew')b.outerHTML=coopBar()}
  else if(m.t==='need'){COOP.need=m.n||{};updCoopHud();const b=$('.cbar');if(b&&COOP.role==='gather')b.outerHTML=coopBar()}
- else if(m.t==='chat')chatAdd(String(m.n||'Друг').slice(0,20),String(m.x||'').slice(0,120));else if(m.t==='share'){S.gold+=m.g;if(G)COOP.xp+=m.x;else gainXp(m.x);toast(`🤝 Доля от продажи: +${fmt(m.g)} 🪙`,'gold');save();renderHeader()}
+ else if(m.t==='gift')recvGift(m);else if(m.t==='chat')chatAdd(String(m.n||'Друг').slice(0,20),String(m.x||'').slice(0,120));else if(m.t==='share'){S.gold+=m.g;if(G)COOP.xp+=m.x;else gainXp(m.x);toast(`🤝 Доля от продажи: +${fmt(m.g)} 🪙`,'gold');save();renderHeader()}
 }
 setInterval(()=>{if(!COOP.on)return;
  if(COOP.role==='gather'){const car=G?Object.values(G.carried).reduce((a,b)=>a+b,0):0;coopSend({t:'status',w:G?G.wd.n:'home',hp:G?Math.ceil(G.p.hp):0,mh:maxHp(),car})}
  else coopSend({t:'need',n:needList()})},2000);
 /* ===== ONLINE: Firebase Realtime Database, комната по коду из 5 цифр ===== */
-const FB_CFG={apiKey:'ВСТАВЬ_СЮДА',authDomain:'ВСТАВЬ_СЮДА',databaseURL:'ВСТАВЬ_СЮДА',projectId:'ВСТАВЬ_СЮДА',appId:'ВСТАВЬ_СЮДА'};
+const FB_CFG={apiKey:'AIzaSyDAmS5KOx8hPPwu2lza9h4mnEX__SwfvPo',authDomain:'moon-7ebab.firebaseapp.com',databaseURL:'https://moon-7ebab-default-rtdb.firebaseio.com',projectId:'moon-7ebab',appId:'1:865264412984:web:6af3bb95283685222839cd'};
 let FB=null,RM=null;
 const rf=p=>FB.D.ref(FB.db,'rooms/'+RM.code+(p?'/'+p:''));
 async function fbInit(){if(FB)return FB;if(/ВСТАВЬ/.test(FB_CFG.apiKey))throw new Error('cfg');
@@ -1219,16 +1230,41 @@ async function coopJoin(code){coopModal('<h2>Подключаюсь…</h2>');
   const r=await D.runTransaction(rf('guest'),c=>c?undefined:FB.uid);if(!r.committed)throw 'full';
   COOP.role=v.hr==='gather'?'brew':'gather';D.onDisconnect(rf('guest')).remove();coopListen()}catch(e){RM=null;coopErr(e)}}
 function coopMenu(){
- if(RM){coopModal(`<h2>🤝 Онлайн</h2><p class="sub">${COOP.on?'Друг в игре. Ты — '+CN[COOP.role]+'.':'Ждём друга…'} Код комнаты: <b>${RM.code}</b></p><div class="row" style="justify-content:center"><button class="btn red" id="cOff">Отключиться</button><button class="btn sec" id="cClose">Закрыть</button></div>`);$('#cOff').onclick=()=>{coopStop();$('#modal').classList.add('hidden')};return}
+ if(RM){coopModal(`<h2>🤝 Онлайн</h2><p class="sub">${COOP.on?'Друг в игре. Ты — '+CN[COOP.role]+'.':'Ждём друга…'} Код комнаты: <b>${RM.code}</b></p><div class="row" style="justify-content:center">${COOP.on?'<button class="btn" id="cGift">🎁 Передать</button>':''}<button class="btn red" id="cOff">Отключиться</button><button class="btn sec" id="cClose">Закрыть</button></div>`);$('#cOff').onclick=()=>{coopStop();$('#modal').classList.add('hidden')};const gg=$('#cGift');if(gg)gg.onclick=()=>giftModal();return}
  coopModal(`<h2>🤝 Играть вдвоём</h2><p class="sub">⚔️ Добытчик собирает травы в мирах, 🧪 Зельевар варит и продаёт. Травы летят зельевару, а доход делится.</p><div class="sect" style="margin:6px 0">Создать комнату — я:</div><div class="row" style="justify-content:center"><button class="btn" id="cH1">⚔️ Добытчик</button><button class="btn" id="cH2">🧪 Зельевар</button></div><div class="sect" style="margin:14px 0 6px">Есть код друга?</div><input id="cIn" inputmode="numeric" maxlength="5" placeholder="•••••" autocomplete="off"><div class="row" style="justify-content:center;margin-top:10px"><button class="btn go" id="cJ">Войти</button><button class="btn sec" id="cClose">Закрыть</button></div>`);
  $('#cH1').onclick=()=>coopCreate('gather');$('#cH2').onclick=()=>coopCreate('brew');
  $('#cIn').oninput=e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,5)};
  $('#cJ').onclick=()=>{const c=$('#cIn').value;c.length===5?coopJoin(c):toast('Нужен код из 5 цифр','warn')}}
+let giftCat='plants';
+function giftModal(cat){cat=cat||giftCat;giftCat=cat;
+ if(!COOP.on)return toast('Друга нет в комнате','warn');
+ const CT=[['plants','🌿 Травы'],['potions','⚗️ Зелья'],['weapons','⚔️ Оружие']];
+ const row=(im,nm,n,id,w)=>`<div class="order" style="padding:8px 10px;margin-bottom:6px;gap:8px;flex-wrap:nowrap"><img src="${im}" style="width:40px;height:40px;flex:none"><div style="flex:1;min-width:0;text-align:left;font-weight:800;font-size:14px">${nm}${w?'':`<div style="font-size:12px;color:var(--mut)">есть ${n}</div>`}</div>${w?`<button class="btn sec" data-g="${id}:1">Отдать</button>`:`<button class="btn sec" data-g="${id}:1">1</button><button class="btn sec" data-g="${id}:all">Все</button>`}</div>`;
+ let rows;
+ if(cat==='plants')rows=Object.keys(PLANTS).filter(k=>S.plants[k]>0).map(k=>row(icon('plant',k),PLANTS[k].n,S.plants[k],k)).join('');
+ else if(cat==='potions')rows=Object.keys(RECIPES).filter(k=>S.potions[k]>0).map(k=>row(icon('potion',k),RECIPES[k].n,S.potions[k],k)).join('');
+ else rows=S.owned.filter(k=>k!=='stick').map(k=>row(icon('weapon',k,48),WEAPONS[k].n,1,k,1)).join('');
+ const m=$('#modal');
+ m.innerHTML=`<div class="mcard" style="max-width:440px;width:94%;max-height:86vh;overflow:auto;padding:20px"><h2 style="font-size:26px">🎁 Передать другу</h2><div class="bfil" style="justify-content:center">${CT.map(([k,n])=>`<button class="${k===cat?'on':''}" data-c="${k}">${n}</button>`).join('')}</div><div style="margin-top:10px">${rows||'<div class="empty">Здесь пусто.</div>'}</div><button class="btn sec" id="gClose" style="margin-top:8px">Закрыть</button></div>`;
+ m.classList.remove('hidden');
+ m.firstElementChild.onclick=e=>{const c=e.target.closest('[data-c]');if(c)return giftModal(c.dataset.c);const g=e.target.closest('[data-g]');if(g){const[id,n]=g.dataset.g.split(':');sendGift(cat,id,n==='all'?'all':+n)}else if(e.target.closest('#gClose'))m.classList.add('hidden')}}
+function sendGift(cat,id,n){
+ if(!COOP.on)return toast('Друга нет в комнате','warn');
+ if(cat==='weapons'){if(id==='stick'||!S.owned.includes(id))return;S.owned=S.owned.filter(x=>x!==id);if(S.weapon===id)S.weapon='stick';coopSend({t:'gift',c:'weapons',id,n:1});toast('🎁 Отправлено: '+WEAPONS[id].n,'ok')}
+ else{const h=cat==='plants'?S.plants:S.potions,q=n==='all'?(h[id]||0):Math.min(n,h[id]||0);if(!(q>0))return;h[id]-=q;coopSend({t:'gift',c:cat,id,n:q});toast('🎁 Отправлено: ×'+q,'ok')}
+ SFX.buy();save();renderAll();giftModal(cat)}
+function recvGift(m){
+ const n=Math.max(1,Math.min(999,m.n|0));let txt='';
+ if(m.c==='plants'&&PLANTS[m.id]){S.plants[m.id]=(S.plants[m.id]||0)+n;txt=PLANTS[m.id].n+' ×'+n}
+ else if(m.c==='potions'&&RECIPES[m.id]){S.potions[m.id]=(S.potions[m.id]||0)+n;S.known[m.id]=true;txt=RECIPES[m.id].n+' ×'+n}
+ else if(m.c==='weapons'&&WEAPONS[m.id]&&m.id!=='stick'){const W=WEAPONS[m.id];if(S.owned.includes(m.id)){const b=Math.round(W.price*.5);S.gold+=b;txt=W.n+' (уже было — получено '+fmt(b)+' 🪙)'}else{S.owned.push(m.id);txt=W.n}}
+ else return;
+ SFX.lvl();toast('🎁 Друг передал: '+txt,'gold');save();renderAll()}
 $('#coopBtn').onclick=coopMenu;
 
 /* ================= boot ================= */
 if(!S.nextOrder){S.orders=[newOrder()];S.nextOrder=Date.now()+8000}
-else{S.orders=S.orders.filter(o=>o.exp>Date.now())}
+else{S.orders=S.orders.slice(0,1).map(o=>({taken:false,exp:0,dur:rint(110,210)*1000,...o})).filter(o=>!o.taken||o.exp>Date.now())}
 if(S.lvl>1||Object.keys(S.potions).length)tab='brew';
 for(const k in S.potions)S.known[k]=true;
 for(const k in RECIPES){if(!S.market[k])S.market[k]=1;if(!S.prev[k])S.prev[k]=1}
